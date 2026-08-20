@@ -846,14 +846,55 @@ function renderTruePlanSVG(hullPts, s, shared){
 }
 
 // Computes a single maxDim/scale shared by both the plan and elevation
-// views, so 1 meter maps to the same number of pixels in both drawings.
-// Uses whichever panel is more tightly constrained so neither overflows.
-function computeSharedViewScale(stats){
-  const maxDim = Math.max(5, Math.ceil((Math.max(stats.height, stats.width, stats.depth) * 1.05) / 5) * 5);
+// views, using a dimension that's the same for EVERY species (not just
+// shared between one species' own two views) — see ensureGlobalMaxDim().
+// This is what keeps the scale rings and meters-per-pixel identical
+// across the whole library, so species are visually comparable.
+function computeSharedViewScale(maxDim){
   const elevDrawable = Math.min(520 - 56 - 118, 420 - 30 - 40); // matches renderTrueElevationSVG padding
   const planDrawable = Math.min(520, 420) - 46 * 2;             // matches renderTruePlanSVG padding
   const scale = Math.min(elevDrawable, planDrawable) / maxDim;
   return { maxDim, scale };
+}
+
+// Background-loads every species' uploaded model once (not added to any
+// visible scene) purely to find the single largest bounding-box extent
+// across the whole library. That extent becomes the fixed maxDim used
+// by every species' plan/elevation views, so a small tree and a large
+// tree are drawn at the same meters-per-pixel scale with the same
+// number of grid rings — the only way the drawings are actually
+// comparable to each other. Falls back to a reasonable default if no
+// models are reachable yet. Result is cached after the first run.
+let globalMaxDimPromise = null;
+function ensureGlobalMaxDim(){
+  if (globalMaxDimPromise) return globalMaxDimPromise;
+  globalMaxDimPromise = new Promise((resolve) => {
+    if (!(window.THREE && THREE.GLTFLoader) || flatSpecies.length === 0){
+      resolve(25);
+      return;
+    }
+    const loader = new THREE.GLTFLoader();
+    let pending = flatSpecies.length;
+    let maxExtent = 0;
+    const finish = () => resolve(Math.max(5, Math.ceil((maxExtent * 1.05) / 5) * 5));
+    flatSpecies.forEach(sp => {
+      const url = `${MODEL_DIR}/${sp.modelFile || (sp.id + '.glb')}`;
+      loader.load(
+        url,
+        (gltf) => {
+          const box = new THREE.Box3().setFromObject(gltf.scene);
+          if (!box.isEmpty()){
+            const size = box.getSize(new THREE.Vector3());
+            maxExtent = Math.max(maxExtent, size.x, size.y, size.z);
+          }
+          if (--pending === 0) finish();
+        },
+        undefined,
+        () => { if (--pending === 0) finish(); } // species with no model yet — skip
+      );
+    });
+  });
+  return globalMaxDimPromise;
 }
 
 function initPreview3D(s, container){
@@ -923,8 +964,10 @@ function initPreview3D(s, container){
   }
 
   // Updates the stat-row, properties table, and dimensioned views with
-  // real values computed from the loaded mesh.
-  function updateComputedStats(stats){
+  // real values computed from the loaded mesh. Async because the plan/
+  // elevation scale depends on ensureGlobalMaxDim(), which may still be
+  // loading other species' models in the background on a first visit.
+  async function updateComputedStats(stats){
     const setText = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
     setText('statHeight', `${stats.height.toFixed(1)} m`);
     setText('statCanopy', `${stats.width.toFixed(1)} m`);
@@ -935,13 +978,17 @@ function initPreview3D(s, container){
     setText('propVolume', `${stats.volume.toFixed(2)} m³`);
     setText('propVertices', `${stats.vertexCount}`);
     setText('propFaces', `${stats.faceCount}`);
+
+    const maxDim = await ensureGlobalMaxDim();
+    if (!activePreview || activePreview.container !== container) return; // user navigated away while this loaded
+
     const planBody = document.getElementById('planViewBody');
     const elevBody = document.getElementById('elevationViewBody');
     const note = document.getElementById('viewsNote');
-    const shared = computeSharedViewScale(stats);
+    const shared = computeSharedViewScale(maxDim);
     if(planBody) planBody.innerHTML = renderTruePlanSVG(stats.planHull, s, shared);
     if(elevBody) elevBody.innerHTML = renderTrueElevationSVG(stats.elevationHull, s, shared);
-    if(note) note.textContent = 'plan and elevation outlines traced from the uploaded 3D hull model, drawn at the same scale — dimensions reflect its actual bounding box';
+    if(note) note.textContent = 'plan and elevation outlines traced from the uploaded 3D hull model, drawn at the same scale across every species — dimensions reflect its actual bounding box';
   }
 
   // No model available (or it failed to load) — mark every computed value
@@ -1420,6 +1467,7 @@ function handleRoute() {
 window.addEventListener('hashchange', handleRoute);
 
 buildSidebar();
+ensureGlobalMaxDim(); // fire-and-forget: warms the cache used by every species' plan/elevation scale
 handleRoute();
 
 document.getElementById('homeLink').addEventListener('click', (e) => {
