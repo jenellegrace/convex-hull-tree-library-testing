@@ -10,16 +10,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #12130f;
-    --panel: #12130f;
-    --panel-raised: #1a1c15;
-    --line: #33352b;
-    --line-soft: #25261f;
-    --fg: #ece8dc;
-    --fg-muted: #a7a595;
-    --fg-dim: #6c6b5d;
-    --accent: #d4b23c;
-    --accent-dim: #d4b23c26;
+    --ink: #ffffff;
+    --panel: #ffffff;
+    --panel-raised: #f5f4ee;
+    --line: #d9d7c8;
+    --line-soft: #e9e7dc;
+    --fg: #14140f;
+    --fg-muted: #4a4a3c;
+    --fg-dim: #8a8873;
+    --accent: #7a5f0e;
+    --accent-dim: #7a5f0e20;
     --radius: 0px;
     --display: 'Inter', sans-serif;
     --body: 'Inter', sans-serif;
@@ -640,7 +640,7 @@ function disposeActivePreview(){
 
 function addGround(scene, maxDim){
   const groundGeo = new THREE.CircleGeometry(Math.max(maxDim, 1) * 0.9, 24);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1c15, roughness: 1 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0xe9e7dc, roughness: 1 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
@@ -988,7 +988,7 @@ function initPreview3D(s, container){
     const shared = computeSharedViewScale(maxDim);
     if(planBody) planBody.innerHTML = renderTruePlanSVG(stats.planHull, s, shared);
     if(elevBody) elevBody.innerHTML = renderTrueElevationSVG(stats.elevationHull, s, shared);
-    if(note) note.textContent = 'plan and elevation outlines traced from the uploaded 3D hull model, drawn at the same scale across every species — dimensions reflect its actual bounding box';
+    if(note) { note.textContent = ''; note.style.display = 'none'; }
   }
 
   // No model available (or it failed to load) — mark every computed value
@@ -997,7 +997,7 @@ function initPreview3D(s, container){
     ['statHeight', 'statCanopy', 'statVolume', 'propHeight', 'propWidth', 'propDepth', 'propVolume', 'propVertices', 'propFaces']
       .forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
     const note = document.getElementById('viewsNote');
-    if(note) note.textContent = message;
+    if(note) { note.textContent = message; note.style.display = ''; }
     const emptyHtml = `<div class="views-empty">no model uploaded</div>`;
     const planBody = document.getElementById('planViewBody');
     const elevBody = document.getElementById('elevationViewBody');
