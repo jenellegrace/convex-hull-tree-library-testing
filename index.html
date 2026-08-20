@@ -188,11 +188,11 @@
 
   .download-control { position: relative; display: inline-block; margin-top: 16px; }
   .download-btn {
-    font-family: var(--mono); font-size: 0.78rem; color: var(--fg);
+    font-family: var(--mono); font-size: 0.78rem; color: var(--accent);
     background: var(--panel-raised); border: 1px solid var(--line); padding: 9px 14px;
     cursor: pointer; display: flex; align-items: center; gap: 10px; text-transform: lowercase;
   }
-  .download-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .download-btn:hover:not(:disabled) { border-color: var(--accent); }
   .download-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .download-btn .chev { font-size: 0.65rem; color: var(--fg-dim); transition: transform .15s ease; }
   .download-control.open .download-btn .chev { transform: rotate(180deg); }
@@ -799,10 +799,10 @@ function renderTruePlanSVG(hullPts, s, shared){
   let rings = '';
   for(let m = 5; m <= maxDim; m += 5){
     const rr = (m * scale) / 2;
-    rings += `<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="var(--line-soft)" stroke-dasharray="2 2"/>`;
+    rings += `<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="var(--fg-dim)" stroke-dasharray="2 2"/>`;
   }
-  rings += `<line x1="${pad*0.4}" y1="${cy}" x2="${width-pad*0.4}" y2="${cy}" stroke="var(--line-soft)" stroke-dasharray="2 2"/>`;
-  rings += `<line x1="${cx}" y1="${pad*0.4}" x2="${cx}" y2="${height-pad*0.4}" stroke="var(--line-soft)" stroke-dasharray="2 2"/>`;
+  rings += `<line x1="${pad*0.4}" y1="${cy}" x2="${width-pad*0.4}" y2="${cy}" stroke="var(--fg-dim)" stroke-dasharray="2 2"/>`;
+  rings += `<line x1="${cx}" y1="${pad*0.4}" x2="${cx}" y2="${height-pad*0.4}" stroke="var(--fg-dim)" stroke-dasharray="2 2"/>`;
 
   const pathD = 'M ' + hullPts.map(p => `${(cx + (p.x - midX) * scale).toFixed(1)},${(cy + (p.y - midZ) * scale).toFixed(1)}`).join(' L ') + ' Z';
 
