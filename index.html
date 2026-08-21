@@ -678,18 +678,26 @@ function groundAndCenter(object3D){
 // hulls typically carry whatever material they had in Rhino (often plain
 // white/gray), so this keeps the preview visually tied to the species
 // color used everywhere else on the page.
+// Uploaded hulls carry PBR extensions (transmission, clearcoat, ior,
+// specular) from their source export. Three.js r128's limited support for
+// those made meshes render almost black regardless of base color, so
+// rather than cloning the original material and only overwriting its
+// color, every mesh gets a brand-new plain material built purely from the
+// species' assigned foliage hex.
 function recolorToHex(object3D, hex){
   const color = new THREE.Color(hex);
   object3D.traverse(child => {
     if(!child.isMesh) return;
-    const applyColor = (mat) => {
-      const m = mat.clone();
-      if(m.color) m.color.copy(color);
-      m.flatShading = true;
-      m.needsUpdate = true;
-      return m;
-    };
-    child.material = Array.isArray(child.material) ? child.material.map(applyColor) : applyColor(child.material);
+    const count = Array.isArray(child.material) ? child.material.length : 1;
+    const makeMaterial = () => new THREE.MeshStandardMaterial({
+      color: color.clone(),
+      flatShading: true,
+      roughness: 0.85,
+      metalness: 0.0,
+    });
+    child.material = Array.isArray(child.material)
+      ? Array.from({ length: count }, makeMaterial)
+      : makeMaterial();
   });
 }
 
@@ -1115,8 +1123,7 @@ function showHome() {
           <div class="material-card-sci">${s.sciName}</div>
           <div class="material-card-desc">${s.desc}</div>
           <div class="material-card-meta">
-            <span>Crown: ${CROWN_SHAPE_LABELS[s.shape]} · ${DENSITY_LABELS[s.density]}</span>
-            <span>${s.modelFile ? '3D model available' : 'no 3D model uploaded yet'}</span>
+            <span>${DENSITY_LABELS[s.density]}</span>
           </div>
         </a>
       `;
@@ -1242,10 +1249,6 @@ function renderDetail(id) {
         <div class="value" id="statCanopy">…</div>
       </div>
       <div class="stat">
-        <div class="label">Crown Shape</div>
-        <div class="value">${CROWN_SHAPE_LABELS[s.shape]}</div>
-      </div>
-      <div class="stat">
         <div class="label">Approx. Hull Volume</div>
         <div class="value" id="statVolume">…</div>
       </div>
@@ -1285,14 +1288,11 @@ function renderDetail(id) {
             </tr>
             <tr>
               <td>Canopy Depth (N–S)</td><td id="propDepth">…</td>
-              <td>Crown Shape</td><td>${CROWN_SHAPE_LABELS[s.shape]}</td>
-            </tr>
-            <tr>
               <td>Approx. Hull Volume</td><td id="propVolume">…</td>
-              <td>Convex Hull Vertices</td><td id="propVertices">…</td>
             </tr>
             <tr>
-              <td>Convex Hull Faces</td><td colspan="3" id="propFaces">…</td>
+              <td>Convex Hull Vertices</td><td id="propVertices">…</td>
+              <td>Convex Hull Faces</td><td id="propFaces">…</td>
             </tr>
             <tr>
               <td>Web Preview Model</td><td colspan="3">${s.modelFile ? `${MODEL_DIR}/${s.modelFile}` : `${MODEL_DIR}/${s.id}.glb (not yet uploaded)`}</td>
