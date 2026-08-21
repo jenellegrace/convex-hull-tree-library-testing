@@ -417,7 +417,7 @@ const POINTS_DIR = 'points'; // folder where downsampled source point clouds (by
 const DATA = [
   { category:"Deciduous Broadleaf", materials:[
     { id:"amur-maple", name:"Amur Maple", sciName:"Acer ginnala", hex:"#656945", shape:"round", density:"dense",
-      modelFile:"amur-maple-hull.glb", pointCloudId:"10546", pointCloudRotationDeg:90,
+      modelFile:"amur-maple-hull.glb", pointCloudId:"10546", pointCloudRotationDeg:-90,
       canopyMaterialRef:{id:"tree-foliage", label:"Tree Foliage (Generic)"},
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A small, multi-stemmed ornamental maple with a dense, rounded canopy. Commonly used as a boulevard or understory specimen where overhead clearance is limited." },
@@ -432,7 +432,7 @@ const DATA = [
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A small ornamental deciduous tree with a dense, rounded-to-vase-shaped crown and a low branching habit. Frequently planted in tight boulevard cutouts and traffic medians." },
     { id:"ash", name:"Ash", sciName:"Fraxinus spp.", hex:"#656945", shape:"oval", density:"medium",
-      modelFile:"ash-hull.glb", pointCloudId:"11201", pointCloudRotationDeg:90,
+      modelFile:"ash-hull.glb", pointCloudId:"11201",
       canopyMaterialRef:{id:"tree-foliage", label:"Tree Foliage (Generic)"},
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A medium-to-large deciduous shade tree with an oval, moderately dense crown. Historically one of the most widely planted street trees in the region." },
@@ -1399,7 +1399,7 @@ function renderDetail(id) {
             <tr><td>Scientific Name</td><td>${s.sciName}</td></tr>
             <tr><td>Category</td><td>${s.category}</td></tr>
             <tr><td>Canopy Reference Material</td><td><a href="https://object-arbutus.alliancecan.ca/3d45b8f4c0f24959b3317690aefc98d8:TSB/index.html#${s.canopyMaterialRef.id}" target="_blank" rel="noopener">${s.canopyMaterialRef.label} ↗</a></td></tr>
-            <tr><td>Modeled / Sourced By</td><td>${s.modeledBy}</td></tr>
+            <tr><td>Modeled By</td><td>${s.modeledBy}</td></tr>
             <tr><td>Point Cloud ID</td><td>${s.pointCloudId ? `${s.pointCloudId}.laz` : '—'}</td></tr>
             <tr><td>Point Cloud Source</td><td>Puliti, S., Lines, E., Müllerová, J., Frey, J., Schindler, Z., Straker, A., Allen, M.J., Winiwarter, L., Rehush, N., Hristova, H., Murray, B., Calders, K., Terryn, L., Coops, N., Höfle, B., Krůček, M., Krok, G., Král, K., Luck, L., Levick, S.R., Missarov, A., Mokroš, M., Owen, H., Stereńczak, K., Pitkänen, T.P., Puletti, N., Saarinen, N., Hopkinson, C., Torresan, C., Tomelleri, E., Weiser, H., Junttila, S., and Astrup, R. (2024) <em>FOR-species20K dataset</em>. Zenodo. <a href="https://zenodo.org/records/13255198" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.13255198 ↗</a></td></tr>
             <tr><td>Comment</td><td>${s.comment}</td></tr>
