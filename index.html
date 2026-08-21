@@ -417,7 +417,7 @@ const POINTS_DIR = 'points'; // folder where downsampled source point clouds (by
 const DATA = [
   { category:"Deciduous Broadleaf", materials:[
     { id:"amur-maple", name:"Amur Maple", sciName:"Acer ginnala", hex:"#656945", shape:"round", density:"dense",
-      modelFile:"amur-maple-hull.glb", pointCloudId:"10546",
+      modelFile:"amur-maple-hull.glb", pointCloudId:"10546", pointCloudRotationDeg:90,
       canopyMaterialRef:{id:"tree-foliage", label:"Tree Foliage (Generic)"},
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A small, multi-stemmed ornamental maple with a dense, rounded canopy. Commonly used as a boulevard or understory specimen where overhead clearance is limited." },
@@ -432,12 +432,12 @@ const DATA = [
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A small ornamental deciduous tree with a dense, rounded-to-vase-shaped crown and a low branching habit. Frequently planted in tight boulevard cutouts and traffic medians." },
     { id:"ash", name:"Ash", sciName:"Fraxinus spp.", hex:"#656945", shape:"oval", density:"medium",
-      modelFile:"ash-hull.glb", pointCloudId:"11201",
+      modelFile:"ash-hull.glb", pointCloudId:"11201", pointCloudRotationDeg:90,
       canopyMaterialRef:{id:"tree-foliage", label:"Tree Foliage (Generic)"},
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A medium-to-large deciduous shade tree with an oval, moderately dense crown. Historically one of the most widely planted street trees in the region." },
     { id:"linden", name:"Linden", sciName:"Tilia cordata", hex:"#45482E", shape:"oval", density:"dense",
-      modelFile:"linden-hull.glb", pointCloudId:"17310",
+      modelFile:"linden-hull.glb", pointCloudId:"17310", pointCloudMirrorX:true,
       canopyMaterialRef:{id:"dense-mature-canopy", label:"Dense / Mature Canopy"},
       modeledBy:"Future Elements Studio", comment:"Dimensions, volume, and mesh statistics are computed directly from the uploaded convex hull model, derived from a single scanned point cloud tree and not necessarily representative of a mature specimen.",
       desc:"A medium-to-large deciduous street tree with a dense, symmetrical, broadly pyramidal-to-oval crown. Valued in urban plantings for its uniform branching habit and heavy summer shade." },
@@ -478,27 +478,59 @@ function shade(hex, percent){
   return `rgb(${clamp(r)},${clamp(g)},${clamp(b)})`;
 }
 
-// Computes real geometric stats (bounding height/width/depth, mesh volume,
-// vertex/face counts, and the true plan/elevation convex-hull silhouettes)
-// directly from a loaded, grounded-and-centered glTF object. Volume is
-// computed via the divergence theorem (signed sum of tetrahedra formed by
-// each triangle with the origin), which is exact for a closed, watertight
-// mesh like these convex hulls and is translation-invariant.
 // Fetches and caches a species' downsampled source point cloud (a flat
-// [x0,y0,z0,x1,y1,z1,...] array in the site's Y-up convention, pre-centered
-// the same way the hull meshes are). Returns null if there's no
-// pointCloudId or the file isn't reachable, so callers can render the
-// plan/elevation views without the background layer rather than fail.
+// [x0,y0,z0,x1,y1,z1,...] array). The raw export is self-centered here —
+// on its OWN bounding box (x/z center, base at y=0) — rather than assumed
+// to already share the hull's origin: comparing the two independently
+// showed the point clouds are centered near (0,0) from their own export
+// pipeline, while the uploaded hulls sit at varying offsets in their raw
+// file and only get centered at runtime by groundAndCenter(). Reusing the
+// hull's offset on the points would be wrong, since the two don't share a
+// raw coordinate frame; centering each independently on its own geometry
+// is what actually lines up their real-world positions.
+//
+// Some point clouds were also scanned/exported at a different horizontal
+// orientation than their hull was modeled in, so a per-species correction
+// (rotation about the vertical axis, and/or a horizontal mirror) can be
+// set via pointCloudRotationDeg / pointCloudMirrorX in DATA. These were
+// set by eye after comparing renders — if a species still looks rotated
+// the wrong way, try negating its rotation value.
 const pointCloudCache = {};
-async function fetchPointCloud(pointCloudId){
+async function fetchPointCloud(s){
+  const pointCloudId = s.pointCloudId;
   if(!pointCloudId) return null;
   if(pointCloudCache[pointCloudId] !== undefined) return pointCloudCache[pointCloudId];
   try {
     const res = await fetch(`${POINTS_DIR}/${pointCloudId}.json`);
     if(!res.ok) throw new Error('not found');
     const flat = await res.json();
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, minZ = Infinity, maxZ = -Infinity;
+    for(let i = 0; i < flat.length; i += 3){
+      const x = flat[i], y = flat[i+1], z = flat[i+2];
+      if(x < minX) minX = x; if(x > maxX) maxX = x;
+      if(y < minY) minY = y;
+      if(z < minZ) minZ = z; if(z > maxZ) maxZ = z;
+    }
+    const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+
+    const mirror = !!s.pointCloudMirrorX;
+    const rad = ((s.pointCloudRotationDeg || 0) * Math.PI) / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+
     const points = [];
-    for(let i = 0; i < flat.length; i += 3) points.push({ x: flat[i], y: flat[i+1], z: flat[i+2] });
+    for(let i = 0; i < flat.length; i += 3){
+      let x = flat[i] - cx;
+      const y = flat[i+1] - minY;
+      let z = flat[i+2] - cz;
+      if(mirror) x = -x;
+      if(rad){
+        const rx = x * cos - z * sin;
+        const rz = x * sin + z * cos;
+        x = rx; z = rz;
+      }
+      points.push({ x, y, z });
+    }
     pointCloudCache[pointCloudId] = points;
   } catch(e) {
     pointCloudCache[pointCloudId] = null;
@@ -506,6 +538,12 @@ async function fetchPointCloud(pointCloudId){
   return pointCloudCache[pointCloudId];
 }
 
+// Computes real geometric stats (bounding height/width/depth, mesh volume,
+// vertex/face counts, and the true plan/elevation convex-hull silhouettes)
+// directly from a loaded, grounded-and-centered glTF object. Volume is
+// computed via the divergence theorem (signed sum of tetrahedra formed by
+// each triangle with the origin), which is exact for a closed, watertight
+// mesh like these convex hulls and is translation-invariant.
 function computeMeshStats(object3D){
   object3D.updateMatrixWorld(true);
   const planPts = [], elevPts = [];
@@ -1034,7 +1072,7 @@ function initPreview3D(s, container){
     setText('propVertices', `${stats.vertexCount}`);
     setText('propFaces', `${stats.faceCount}`);
 
-    const [maxDim, points] = await Promise.all([ensureGlobalMaxDim(), fetchPointCloud(s.pointCloudId)]);
+    const [maxDim, points] = await Promise.all([ensureGlobalMaxDim(), fetchPointCloud(s)]);
     if (!activePreview || activePreview.container !== container) return; // user navigated away while this loaded
 
     const planBody = document.getElementById('planViewBody');
@@ -1310,6 +1348,7 @@ function renderDetail(id) {
 
     <div class="views-section">
       <h3>Dimensioned Views</h3>
+      <p class="section-note">the convex hull is shown overlaid on its source point cloud, both drawn at the same scale</p>
       <p class="section-note" id="viewsNote">${s.modelFile ? 'loading true hull outline from the uploaded 3D model…' : 'checking for an uploaded 3D model…'}</p>
       <div class="views-grid">
         <div class="view-card">
